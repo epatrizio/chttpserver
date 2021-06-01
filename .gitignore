@@ -1,3 +1,10 @@
+chttpserver
+chttpserver_test
+/tests/lib/
+
+# vsc
+/.vscode
+
 # Prerequisites
 *.d
 
