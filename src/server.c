@@ -9,9 +9,14 @@
 #include <unistd.h>
 
 #include "server.h"
+#include "http.h"
+
+#define BACKLOG 10
+#define BUFFER_SIZE 1024
 
 int socket_init(int);
 void socket_init_trace(struct sockaddr_in*);
+void handle_request(Request*, int);
 void send_ping(int);
 void perror_exit(const char*);
 
@@ -19,6 +24,7 @@ void server_start(int port)
 {
     int client_socket;
     long client_request;
+    Request *client_request_struct;
     struct sockaddr_in client_name;
     int client_name_len = sizeof(client_name);
 
@@ -30,15 +36,15 @@ void server_start(int port)
             perror_exit("[client socket accept]");
         }
 
-        char client_request_buffer[1024] = {0};
-        client_request = read(client_socket, client_request_buffer, 1024);
+        char client_request_buffer[BUFFER_SIZE] = {0};
+        client_request = read(client_socket, client_request_buffer, BUFFER_SIZE);
         if (client_request < 0) {
             printf("Client request error!\n");
         }
         printf("%s", client_request_buffer);
 
-        // For the moment, send always a ping return to client
-        send_ping(client_socket);
+        client_request_struct = parse_client_request(client_request_buffer);
+        handle_request(client_request_struct, client_socket);
 
         shutdown(client_socket, SHUT_RDWR); 
         close(client_socket);
@@ -62,7 +68,7 @@ int socket_init(int port)
         perror_exit("[server socket bind]");
     }
 
-    if (listen(server_socket, 10) < 0) {
+    if (listen(server_socket, BACKLOG) < 0) {
         perror_exit("[server socket listen]");
     }
 
@@ -95,9 +101,22 @@ void socket_init_trace(struct sockaddr_in *server_address)
     printf("Server listening on http://%s:%s\n", hostBuffer, serviceBuffer);
 }
 
+void handle_request(Request* request, int client_socket)
+{
+    if (strcmp(request->method,"GET") == 0) {
+        if (strcmp(request->content_requested,"/ping") == 0) {
+            send_ping(client_socket);
+        } else {
+            send_not_implemented(client_socket);
+        }
+    } else {
+        send_not_implemented(client_socket);
+    }
+}
+
 void send_ping(int client_socket)
 {
-    char ping[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nping return!";
+    char ping[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 5\n\nping!";
     write(client_socket, ping, strlen(ping));
 }
 
