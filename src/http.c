@@ -27,12 +27,12 @@ Request *parse_client_request(char* client_request)
 
 void send_not_implemented(int client_socket)
 {
-    char content[] = "HTTP/1.1 501 NOT IMPLEMENTED\nContent-Type: text/plain\nContent-Length: 16\n\nnot implemented!";
+    char content[] = "HTTP/1.1 501 NOT IMPLEMENTED\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 16\n\nnot implemented!";
     write(client_socket, content, strlen(content));
 }
 
 void send_not_found(int client_socket)
 {
-    char content[] = "HTTP/1.1 404 NOT FOUND\nContent-Type: text/plain\nContent-Length: 10\n\nnot found!";
+    char content[] = "HTTP/1.1 404 NOT FOUND\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 10\n\nnot found!";
     write(client_socket, content, strlen(content));
 }

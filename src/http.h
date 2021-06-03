@@ -1,6 +1,8 @@
 #ifndef HTTP_H
 #define HTTP_H
 
+#define SERVER_STRING "Server: chttpserver/1.0\n"
+
 typedef enum {
     GET,
     HEAD,
