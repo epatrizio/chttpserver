@@ -34,7 +34,7 @@ char *get_text_file_http_header(const char* path_file)
     else if (strstr(path_file, ".css") != NULL)
         return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\n\n";
     else
-        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\n\n";
+        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/plain\n\n";
 }
 
 void send_not_implemented(int client_socket)
