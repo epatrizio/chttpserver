@@ -25,6 +25,18 @@ Request *parse_client_request(char* client_request)
     return request;
 }
 
+char *get_text_file_http_header(const char* path_file)
+{
+    if (strstr(path_file, ".htm") != NULL)
+        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/html\n\n";
+    else if (strstr(path_file, ".js") != NULL)
+        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/javascript\n\n";
+    else if (strstr(path_file, ".css") != NULL)
+        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\n\n";
+    else
+        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\n\n";
+}
+
 void send_not_implemented(int client_socket)
 {
     char content[] = "HTTP/1.1 501 NOT IMPLEMENTED\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 16\n\nnot implemented!";

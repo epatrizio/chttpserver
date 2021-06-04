@@ -10,6 +10,7 @@
 
 #include "server.h"
 #include "http.h"
+#include "utils.h"
 
 #define BACKLOG 10
 #define BUFFER_SIZE 1024
@@ -17,8 +18,8 @@
 int socket_init(int);
 void socket_init_trace(struct sockaddr_in*);
 void handle_request(Request*, int);
+void send_static_content(int, const char*);
 void send_ping(int);
-void perror_exit(const char*);
 
 void server_start(int port)
 {
@@ -107,21 +108,38 @@ void handle_request(Request* request, int client_socket)
         if (strcmp(request->content_requested,"/ping") == 0) {
             send_ping(client_socket);
         } else {
-            send_not_implemented(client_socket);
+            send_static_content(client_socket, request->content_requested);
         }
     } else {
         send_not_implemented(client_socket);
     }
 }
 
-void send_ping(int client_socket)
+void send_static_content(int client_socket, const char *content_local_path)
 {
-    char ping[] = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 5\n\nping!";
-    write(client_socket, ping, strlen(ping));
+    char *path = str_concat(WWWROOT, content_local_path);
+    FILE *resource = fopen(path, "r");
+    free(path);
+    if (resource == NULL) {
+        send_not_found(client_socket);
+        perror("[send static content]");
+        return;
+    }
+
+    char *header = get_text_file_http_header(content_local_path);
+    write(client_socket, header, strlen(header));
+
+    char content[BUFFER_SIZE];
+    while (fgets(content, BUFFER_SIZE, resource) != NULL) {
+        write(client_socket, content, strlen(content));
+    }
+
+    fclose(resource);
+    resource = NULL;
 }
 
-void perror_exit(const char *prefix_message)
+void send_ping(int client_socket)
 {
-    perror(prefix_message);
-    exit(EXIT_FAILURE);
+    char ping[] = "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 5\n\nping!";
+    write(client_socket, ping, strlen(ping));
 }
