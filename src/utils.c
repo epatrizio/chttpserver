@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,4 +19,27 @@ void perror_exit(const char *prefix_message)
 {
     perror(prefix_message);
     exit(EXIT_FAILURE);
+}
+
+size_t get_file_size(FILE *resource)
+{
+    size_t size;
+
+    fseek(resource, 0, SEEK_END);
+    size = ftell(resource);
+    fseek(resource, 0, SEEK_SET);
+
+    return size;
+}
+
+bool is_image_file(const char* path_file)
+{
+    return (
+        strstr(path_file, ".jpg") != NULL || strstr(path_file, ".jpeg") != NULL ||
+        strstr(path_file, ".png") != NULL ||
+        strstr(path_file, ".gif") != NULL ||
+        strstr(path_file, ".bmp") != NULL ||
+        strstr(path_file, ".webp") != NULL ||
+        strstr(path_file, ".ico") != NULL
+    );
 }

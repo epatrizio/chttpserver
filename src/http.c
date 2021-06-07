@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -25,16 +26,34 @@ Request *parse_client_request(char* client_request)
     return request;
 }
 
-char *get_text_file_http_header(const char* path_file)
+void get_text_file_http_header(const char* path_file, const size_t file_size, char *header)
 {
     if (strstr(path_file, ".htm") != NULL)
-        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/html\n\n";
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/html\nContent-Length: %li\n\n", file_size);
     else if (strstr(path_file, ".js") != NULL)
-        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/javascript\n\n";
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/javascript\nContent-Length: %li\n\n", file_size);
     else if (strstr(path_file, ".css") != NULL)
-        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\n\n";
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/css\nContent-Length: %li\n\n", file_size);
     else
-        return "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/plain\n\n";
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: %li\n\n", file_size);
+}
+
+void get_image_file_http_header(const char* path_file, const size_t file_size, char *header)
+{
+    if (strstr(path_file, ".jpg") != NULL || strstr(path_file, ".jpeg") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/jpeg\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else if (strstr(path_file, ".gif") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/gif\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else if (strstr(path_file, ".png") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/png\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else if (strstr(path_file, ".bmp") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/bmp\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else if (strstr(path_file, ".webp") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/webp\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else if (strstr(path_file, ".ico") != NULL)
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: image/x-icon\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
+    else
+        sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: application/octet-stream\nContent-Transfer-Encoding: binary\nContent-Length: %li\n\n", file_size);
 }
 
 void send_not_implemented(int client_socket)

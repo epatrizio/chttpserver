@@ -14,11 +14,13 @@
 
 #define BACKLOG 10
 #define BUFFER_SIZE 1024
+#define HEADER_MAX_SIZE 200
 
 int socket_init(int);
 void socket_init_trace(struct sockaddr_in*);
 void handle_request(Request*, int);
-void send_static_content(int, const char*);
+void send_text_content(int, const char*);
+void send_image_content(int, const char*);
 void send_ping(int);
 
 void server_start(int port)
@@ -108,30 +110,68 @@ void handle_request(Request* request, int client_socket)
         if (strcmp(request->content_requested,"/ping") == 0) {
             send_ping(client_socket);
         } else {
-            send_static_content(client_socket, request->content_requested);
+            if (is_image_file(request->content_requested))
+                send_image_content(client_socket, request->content_requested);
+            else
+                send_text_content(client_socket, request->content_requested);
         }
     } else {
         send_not_implemented(client_socket);
     }
 }
 
-void send_static_content(int client_socket, const char *content_local_path)
+void send_text_content(int client_socket, const char *content_local_path)
 {
+    char header[HEADER_MAX_SIZE];
+    char content[BUFFER_SIZE];
+    size_t file_size;
     char *path = str_concat(WWWROOT, content_local_path);
     FILE *resource = fopen(path, "r");
     free(path);
     if (resource == NULL) {
         send_not_found(client_socket);
-        perror("[send static content]");
+        perror("[send text content]");
         return;
     }
 
-    char *header = get_text_file_http_header(content_local_path);
+    file_size = get_file_size(resource);
+    get_text_file_http_header(content_local_path, file_size, header);
     write(client_socket, header, strlen(header));
 
-    char content[BUFFER_SIZE];
     while (fgets(content, BUFFER_SIZE, resource) != NULL) {
         write(client_socket, content, strlen(content));
+        bzero(content, strlen(content));
+    }
+
+    fclose(resource);
+    resource = NULL;
+}
+
+void send_image_content(int client_socket, const char *content_local_path)
+{
+    char header[HEADER_MAX_SIZE];
+    char content[BUFFER_SIZE];
+    size_t file_size, buffer_size;
+    ssize_t written_size;
+    char *path = str_concat(WWWROOT, content_local_path);
+    FILE *resource = fopen(path, "rb");
+    free(path);
+    if (resource == NULL) {
+        send_not_found(client_socket);
+        perror("[send image content]");
+        return;
+    }
+
+    file_size = get_file_size(resource);
+    get_image_file_http_header(content_local_path, file_size, header);
+    write(client_socket, header, strlen(header));
+
+    while (!feof(resource)) {
+        buffer_size = fread(content, 1, sizeof(content)-1, resource);
+        do { 
+            written_size = write(client_socket, content, buffer_size);
+        } while (written_size < 0);
+        bzero(content, sizeof(content));
     }
 
     fclose(resource);

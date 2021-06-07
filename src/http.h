@@ -21,7 +21,8 @@ typedef struct {
 } Request;
 
 Request *parse_client_request(char*);
-char* get_text_file_http_header(const char*);
+void get_text_file_http_header(const char*, const size_t, char*);
+void get_image_file_http_header(const char*, const size_t, char*);
 void send_not_implemented(int);
 void send_not_found(int);
 
