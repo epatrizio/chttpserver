@@ -30,3 +30,17 @@ void test_is_image_file(const void *function_node)
     assert_false(is_image_file("/path/name.txt"), function_node);
     assert_false(is_image_file("/path/name"), function_node);
 }
+
+void test_get_file_size(const void *function_node)
+{
+    FILE *resource = fopen("tests/data/test.txt", "r");
+    if (resource == NULL) {
+        perror("[test_get_file_size tests/data/test.txt]");
+        return;
+    }
+
+    assert_eaquals_int(get_file_size(resource), 28, function_node);
+
+    fclose(resource);
+    resource = NULL;
+}
