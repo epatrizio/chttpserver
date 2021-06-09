@@ -49,6 +49,7 @@ void server_start(int port)
         client_request_struct = parse_client_request(client_request_buffer);
         handle_request(client_request_struct, client_socket);
 
+        free(client_request_struct);
         shutdown(client_socket, SHUT_RDWR); 
         close(client_socket);
     }
