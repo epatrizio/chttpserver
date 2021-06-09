@@ -44,3 +44,27 @@ void test_get_file_size(const void *function_node)
     fclose(resource);
     resource = NULL;
 }
+
+void test_parse_client_request(const void *function_node)
+{
+    char client_request_buffer_1[] = "GET /index.htm HTTP/1.1\n\rother_headers...";
+    Request *client_request = parse_client_request(client_request_buffer_1);
+    assert_eaquals_charp("GET", client_request->method, function_node);
+    assert_eaquals_charp("/index.htm", client_request->content_requested, function_node);
+    assert_eaquals_charp("HTTP/1.1", client_request->http_version, function_node);
+    free(client_request);
+
+    char client_request_buffer_2[] = "GET / HTTP/1.1\n\rother_headers...";
+    client_request = parse_client_request(client_request_buffer_2);
+    assert_eaquals_charp("GET", client_request->method, function_node);
+    assert_eaquals_charp("/", client_request->content_requested, function_node);
+    assert_eaquals_charp("HTTP/1.1", client_request->http_version, function_node);
+    free(client_request);
+
+    char client_request_buffer_3[] = "POST /action.cgi HTTP/1.0\n\rother_headers...";
+    client_request = parse_client_request(client_request_buffer_3);
+    assert_eaquals_charp("POST", client_request->method, function_node);
+    assert_eaquals_charp("/action.cgi", client_request->content_requested, function_node);
+    assert_eaquals_charp("HTTP/1.0", client_request->http_version, function_node);
+    free(client_request);
+}

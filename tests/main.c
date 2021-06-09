@@ -6,10 +6,21 @@
 
 int main(int argc, char *argv[])
 {
-    TestSuite *ts_server = createTestSuite("UTILS");
-    addTestFunction(ts_server, "str_concat", test_str_concat);
-    addTestFunction(ts_server, "is_image_file", test_is_image_file);
-    addTestFunction(ts_server, "get_file_size", test_get_file_size);
+    TestSuite *ts_utils = createTestSuite("UTILS");
+    addTestFunction(ts_utils, "str_concat", test_str_concat);
+    addTestFunction(ts_utils, "is_image_file", test_is_image_file);
+    addTestFunction(ts_utils, "get_file_size", test_get_file_size);
+    runTestSuite(ts_utils, argc, argv);
+    displayTestSuite(ts_utils);
+    deleteTestSuite(ts_utils);
+
+    TestSuite *ts_http = createTestSuite("HTTP");
+    addTestFunction(ts_http, "parse_client_request", test_parse_client_request);
+    runTestSuite(ts_http, argc, argv);
+    displayTestSuite(ts_http);
+    deleteTestSuite(ts_http);
+
+    TestSuite *ts_server = createTestSuite("SERVER");
     runTestSuite(ts_server, argc, argv);
     displayTestSuite(ts_server);
     deleteTestSuite(ts_server);
