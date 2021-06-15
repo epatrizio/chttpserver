@@ -1,8 +1,10 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "utils.h"
 #include "http.h"
 
 Request *parse_client_request(char* client_request)
@@ -15,12 +17,20 @@ Request *parse_client_request(char* client_request)
     while (token != NULL) {
         if (i == 0)
             request->method = token;
-        else if (i == 1)
+        else if (i == 1) {
             request->content_requested = token;
+            request->query_string = NULL;
+        }
         else if (i == 2)
             request->http_version = token;
         token = strtok(NULL, " ");
         i++;
+    }
+
+    if (strstr(request->content_requested, "?") != NULL) {
+        char **content_parse = get_query_string(request->content_requested);
+        request->content_requested = content_parse[0];
+        request->query_string = content_parse[1];
     }
 
     return request;
@@ -65,5 +75,17 @@ void send_not_implemented(int client_socket)
 void send_not_found(int client_socket)
 {
     char content[] = "HTTP/1.1 404 NOT FOUND\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 10\n\nnot found!";
+    write(client_socket, content, strlen(content));
+}
+
+void send_ok_php_cgi(int client_socket)
+{
+    char content[] = "HTTP/1.1 200 OK\n"SERVER_STRING"X-Powered-By: php-cgi\n";
+    write(client_socket, content, strlen(content));
+}
+
+void send_internal_server_error(int client_socket)
+{
+    char content[] = "HTTP/1.1 500 INTERNAL SERVER ERROR\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 22\n\ninternal server error!";
     write(client_socket, content, strlen(content));
 }

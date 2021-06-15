@@ -17,6 +17,7 @@ typedef enum {
 typedef struct {
     char *method;
     char *content_requested;
+    char *query_string;
     char *http_version;
 } Request;
 
@@ -25,5 +26,7 @@ void get_text_file_http_header(const char*, const size_t, char*);
 void get_image_file_http_header(const char*, const size_t, char*);
 void send_not_implemented(int);
 void send_not_found(int);
+void send_ok_php_cgi(int);
+void send_internal_server_error(int);
 
 #endif

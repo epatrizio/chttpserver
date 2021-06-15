@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -22,6 +23,7 @@ void handle_request(Request*, int);
 void send_text_content(int, const char*);
 void send_image_content(int, const char*);
 void send_ping(int);
+void execute_php_cgi(int, const char*, const char*);
 
 void server_start(int port)
 {
@@ -110,6 +112,8 @@ void handle_request(Request* request, int client_socket)
     if (strcmp(request->method,"GET") == 0) {
         if (strcmp(request->content_requested,"/ping") == 0) {
             send_ping(client_socket);
+        } else if (strstr(request->content_requested, ".php") != NULL) {
+            execute_php_cgi(client_socket, request->content_requested, request->query_string);
         } else {
             if (is_image_file(request->content_requested))
                 send_image_content(client_socket, request->content_requested);
@@ -183,4 +187,89 @@ void send_ping(int client_socket)
 {
     char ping[] = "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: text/plain\nContent-Length: 5\n\nping!";
     write(client_socket, ping, strlen(ping));
+}
+
+void execute_php_cgi(int client_socket, const char *content_local_path, const char *query_string)
+{
+    int cgi_input[2];
+    int cgi_output[2];
+    int status;
+    pid_t pid;
+
+    char *script_filename = str_concat("SCRIPT_FILENAME="WWWROOT, content_local_path);
+    char *script_query_string;
+    if (query_string != NULL)
+        script_query_string = str_concat("QUERY_STRING=", query_string);
+
+    if (pipe(cgi_input) < 0) {
+        send_internal_server_error(client_socket);
+        perror("[execute php cgi pipe input]");
+        return;
+    }
+    if (pipe(cgi_output) < 0) {
+        send_internal_server_error(client_socket);
+        perror("[execute php cgi pipe output]");
+        return;
+    }
+
+    pid = fork();   // CGI execute in another process
+    if (pid < 0) {
+        send_internal_server_error(client_socket);
+        perror("[execute php cgi]");
+        return;
+    } else if (pid == 0) {  // CGI execute in child process
+        printf("child process pid=%u of parent process pid=%u\n", getpid(), getppid());
+
+        dup2(cgi_input[0], 0);
+        close(cgi_input[1]);
+        dup2(cgi_output[1], 1);
+        close(cgi_output[0]);
+
+        putenv("GATEWAY_INTERFACE=CGI/1.1");
+        putenv(script_filename);
+        if (query_string != NULL)
+            putenv(script_query_string);
+        putenv("REQUEST_METHOD=GET");
+        putenv("REDIRECT_STATUS=CGI");
+        putenv("SERVER_PROTOCOL=HTTP/1.1");
+        putenv("SERVER_NAME=127.0.0.1");
+        putenv("SERVER_SOFTWARE="SERVER_STRING);
+        putenv("REMOTE_HOST=127.0.0.1");
+        execl("/usr/bin/php-cgi", "php-cgi", script_filename, (char*)NULL);
+
+        free(script_filename);
+        free(script_query_string);
+
+        exit(EXIT_SUCCESS);
+    } else {    // parent process
+        printf("parent of parent process pid=%u of parent process pid=%u\n",getppid(), getpid());
+
+        close(cgi_input[0]);
+        close(cgi_output[1]);
+
+        send_ok_php_cgi(client_socket);
+        char content[BUFFER_SIZE];
+        while (read(cgi_output[0], content, BUFFER_SIZE) > 0) {
+            write(client_socket, content, strlen(content));
+            bzero(content, strlen(content));
+        }
+
+        close(cgi_input[1]);
+        close(cgi_output[0]);
+
+        if (waitpid(pid, &status, 0) > 0) {
+            if (WIFEXITED(status) && !WEXITSTATUS(status))
+                printf("cgi execution successful!\n");
+            else if (WIFEXITED(status) && WEXITSTATUS(status)) {
+                if (WEXITSTATUS(status) == 127)
+                    perror("[execute php cgi] cgi exec failed!");
+                else
+                    printf("program terminated normally, but returned a non-zero status\n");
+            }
+            else 
+               printf("program didn't terminate normally\n");
+        } 
+        else
+            perror("[execute php cgi] waitpid() failed!");
+    }
 }
