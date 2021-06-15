@@ -43,3 +43,23 @@ bool is_image_file(const char* path_file)
         strstr(path_file, ".ico") != NULL
     );
 }
+
+char **get_query_string(const char* uri)
+{
+    char **result = (char**)malloc(2*sizeof(char*));
+    unsigned short int i = 0;
+    char *uri_cpy = (char *)malloc(strlen(uri)+1);
+    strcpy(uri_cpy, uri);
+
+    char* token = strtok(uri_cpy, "?");
+    while (token != NULL) {
+        result[i] = (char *)malloc(strlen(token)+1);
+        strcpy(result[i], token);
+        token = strtok(NULL, "?");
+        i++;
+    }
+
+    free(uri_cpy);
+
+    return result;
+}
