@@ -9,7 +9,7 @@ void test_str_concat(const void *function_node)
     char *s2 = "str_2";
     char *result = str_concat(s1, s2);
 
-    assert_eaquals_charp("str_1str_2", result, function_node);
+    assert_equals_charp("str_1str_2", result, function_node);
 
     free(result);
 }
@@ -39,32 +39,67 @@ void test_get_file_size(const void *function_node)
         return;
     }
 
-    assert_eaquals_int(get_file_size(resource), 28, function_node);
+    assert_equals_int(get_file_size(resource), 28, function_node);
 
     fclose(resource);
     resource = NULL;
+}
+
+void test_get_query_string(const void *function_node)
+{
+    char **result = get_query_string("/folder/file.ext?par1=val1&par2=val2&par3=val3");
+    assert_equals_charp("/folder/file.ext", result[0], function_node);
+    assert_equals_charp("par1=val1&par2=val2&par3=val3", result[1], function_node);
+
+    free(result[0]);
+    free(result[1]);
+    free(result);
+
+    result = get_query_string("/folder/file2.ext");
+    assert_equals_charp("/folder/file2.ext", result[0], function_node);
+    assert_null(result[1], function_node);
+
+    free(result[0]);
+    free(result[1]);
+    free(result);
+
+    result = get_query_string("/folder/file3.ext?");
+    assert_equals_charp("/folder/file3.ext", result[0], function_node);
+    assert_null(result[1], function_node);
+
+    free(result[0]);
+    free(result[1]);
+    free(result);
 }
 
 void test_parse_client_request(const void *function_node)
 {
     char client_request_buffer_1[] = "GET /index.htm HTTP/1.1\n\rother_headers...";
     Request *client_request = parse_client_request(client_request_buffer_1);
-    assert_eaquals_charp("GET", client_request->method, function_node);
-    assert_eaquals_charp("/index.htm", client_request->content_requested, function_node);
-    assert_eaquals_charp("HTTP/1.1", client_request->http_version, function_node);
+    assert_equals_charp("GET", client_request->method, function_node);
+    assert_equals_charp("/index.htm", client_request->content_requested, function_node);
+    assert_equals_charp("HTTP/1.1", client_request->http_version, function_node);
     free(client_request);
 
-    char client_request_buffer_2[] = "GET / HTTP/1.1\n\rother_headers...";
+    char client_request_buffer_2[] = "GET / HTTP/2\n\rother_headers...";
     client_request = parse_client_request(client_request_buffer_2);
-    assert_eaquals_charp("GET", client_request->method, function_node);
-    assert_eaquals_charp("/", client_request->content_requested, function_node);
-    assert_eaquals_charp("HTTP/1.1", client_request->http_version, function_node);
+    assert_equals_charp("GET", client_request->method, function_node);
+    assert_equals_charp("/", client_request->content_requested, function_node);
+    assert_equals_charp("HTTP/2", client_request->http_version, function_node);
     free(client_request);
 
-    char client_request_buffer_3[] = "POST /action.cgi HTTP/1.0\n\rother_headers...";
+    char client_request_buffer_3[] = "GET /cgi/action.cgi?par1=val1&par2=val2&par3=val3 HTTP/1.0\n\rother_headers...";
     client_request = parse_client_request(client_request_buffer_3);
-    assert_eaquals_charp("POST", client_request->method, function_node);
-    assert_eaquals_charp("/action.cgi", client_request->content_requested, function_node);
-    assert_eaquals_charp("HTTP/1.0", client_request->http_version, function_node);
+    assert_equals_charp("GET", client_request->method, function_node);
+    assert_equals_charp("/cgi/action.cgi", client_request->content_requested, function_node);
+    assert_equals_charp("par1=val1&par2=val2&par3=val3", client_request->query_string, function_node);
+    assert_equals_charp("HTTP/1.0", client_request->http_version, function_node);
+    free(client_request);
+
+    char client_request_buffer_4[] = "POST /action.cgi HTTP/1.1\n\rother_headers...";
+    client_request = parse_client_request(client_request_buffer_4);
+    assert_equals_charp("POST", client_request->method, function_node);
+    assert_equals_charp("/action.cgi", client_request->content_requested, function_node);
+    assert_equals_charp("HTTP/1.1", client_request->http_version, function_node);
     free(client_request);
 }

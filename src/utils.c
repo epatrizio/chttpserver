@@ -51,8 +51,10 @@ char **get_query_string(const char* uri)
     char *uri_cpy = (char *)malloc(strlen(uri)+1);
     strcpy(uri_cpy, uri);
 
+    result[0] = NULL;
+    result[1] = NULL;
     char* token = strtok(uri_cpy, "?");
-    while (token != NULL) {
+    while (token != NULL && i <= 1) {
         result[i] = (char *)malloc(strlen(token)+1);
         strcpy(result[i], token);
         token = strtok(NULL, "?");

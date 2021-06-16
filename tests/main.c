@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
     addTestFunction(ts_utils, "str_concat", test_str_concat);
     addTestFunction(ts_utils, "is_image_file", test_is_image_file);
     addTestFunction(ts_utils, "get_file_size", test_get_file_size);
+    addTestFunction(ts_utils, "get_query_string", test_get_query_string);
     runTestSuite(ts_utils, argc, argv);
     displayTestSuite(ts_utils);
     deleteTestSuite(ts_utils);
