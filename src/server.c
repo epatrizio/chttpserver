@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/wait.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -12,6 +10,7 @@
 #include "server.h"
 #include "http.h"
 #include "utils.h"
+#include "process.h"
 
 #define BACKLOG 10
 #define BUFFER_SIZE 1024
@@ -191,9 +190,7 @@ void send_ping(int client_socket)
 
 void execute_php_cgi(int client_socket, const char *content_local_path, const char *query_string)
 {
-    int cgi_input[2];
-    int cgi_output[2];
-    int status;
+    FD_pipe cgi_pipes;
     pid_t pid;
 
     char *script_filename = str_concat("SCRIPT_FILENAME="WWWROOT, content_local_path);
@@ -201,29 +198,30 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
     if (query_string != NULL)
         script_query_string = str_concat("QUERY_STRING=", query_string);
 
-    if (pipe(cgi_input) < 0) {
+    if (pipe(cgi_pipes.parent) < 0) {
         send_internal_server_error(client_socket);
-        perror("[execute php cgi pipe input]");
+        perror("[execute php cgi parent pipe creation]");
         return;
     }
-    if (pipe(cgi_output) < 0) {
+
+    if (pipe(cgi_pipes.child) < 0) {
         send_internal_server_error(client_socket);
-        perror("[execute php cgi pipe output]");
+        perror("[execute php cgi child pipe creation]");
         return;
     }
 
     pid = fork();   // CGI execute in another process
     if (pid < 0) {
         send_internal_server_error(client_socket);
-        perror("[execute php cgi]");
+        perror("[execute php cgi fork creation]");
         return;
-    } else if (pid == 0) {  // CGI execute in child process
-        printf("child process pid=%u of parent process pid=%u\n", getpid(), getppid());
+    } else if (pid == 0) {  // CGI execute in the child process
+        printf("CGI child process pid=%u of parent process pid=%u\n", getpid(), getppid());
 
-        dup2(cgi_input[0], 0);
-        close(cgi_input[1]);
-        dup2(cgi_output[1], 1);
-        close(cgi_output[0]);
+        dup2(cgi_pipes.parent[0], 0);
+        close(cgi_pipes.parent[1]);
+        dup2(cgi_pipes.child[1], 1);
+        close(cgi_pipes.child[0]);
 
         putenv("GATEWAY_INTERFACE=CGI/1.1");
         putenv(script_filename);
@@ -235,41 +233,31 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
         putenv("SERVER_NAME=127.0.0.1");
         putenv("SERVER_SOFTWARE="SERVER_STRING);
         putenv("REMOTE_HOST=127.0.0.1");
-        execl("/usr/bin/php-cgi", "php-cgi", script_filename, (char*)NULL);
+        execl("/usr/bin/php-cgi", "php-cgi", script_filename, (char*)NULL);        
+
+        close(cgi_pipes.parent[0]);
+        close(cgi_pipes.child[1]);
 
         free(script_filename);
         free(script_query_string);
 
         exit(EXIT_SUCCESS);
-    } else {    // parent process
-        printf("parent of parent process pid=%u of parent process pid=%u\n",getppid(), getpid());
+    } else {    // Parent process
+        printf("CGI parent of parent process pid=%u of parent process pid=%u\n", getppid(), getpid());
 
-        close(cgi_input[0]);
-        close(cgi_output[1]);
+        close(cgi_pipes.parent[0]);
+        close(cgi_pipes.child[1]);
 
         send_ok_php_cgi(client_socket);
         char content[BUFFER_SIZE];
-        while (read(cgi_output[0], content, BUFFER_SIZE) > 0) {
+        while (read(cgi_pipes.child[0], content, BUFFER_SIZE) > 0) {
             write(client_socket, content, strlen(content));
             bzero(content, strlen(content));
         }
 
-        close(cgi_input[1]);
-        close(cgi_output[0]);
-
-        if (waitpid(pid, &status, 0) > 0) {
-            if (WIFEXITED(status) && !WEXITSTATUS(status))
-                printf("cgi execution successful!\n");
-            else if (WIFEXITED(status) && WEXITSTATUS(status)) {
-                if (WEXITSTATUS(status) == 127)
-                    perror("[execute php cgi] cgi exec failed!");
-                else
-                    printf("program terminated normally, but returned a non-zero status\n");
-            }
-            else 
-               printf("program didn't terminate normally\n");
-        } 
-        else
-            perror("[execute php cgi] waitpid() failed!");
+        close(cgi_pipes.parent[1]);
+        close(cgi_pipes.child[0]);
     }
+
+    wait_pid(pid);
 }
