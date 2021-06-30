@@ -193,7 +193,8 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
     FD_pipe cgi_pipes;
     pid_t pid;
 
-    char *script_filename = str_concat("SCRIPT_FILENAME="WWWROOT, content_local_path);
+    char *path = str_concat(WWWROOT, content_local_path);
+    char *script_filename = str_concat("SCRIPT_FILENAME=", path);
     char *script_query_string;
     if (query_string != NULL)
         script_query_string = str_concat("QUERY_STRING=", query_string);
@@ -233,11 +234,12 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
         putenv("SERVER_NAME=127.0.0.1");
         putenv("SERVER_SOFTWARE="SERVER_STRING);
         putenv("REMOTE_HOST=127.0.0.1");
-        execl("/usr/bin/php-cgi", "php-cgi", script_filename, (char*)NULL);        
+        execl("/usr/bin/php-cgi", "php-cgi", path, (char*)NULL);
 
         close(cgi_pipes.parent[0]);
         close(cgi_pipes.child[1]);
 
+        free(path);
         free(script_filename);
         free(script_query_string);
 
