@@ -19,6 +19,9 @@ typedef struct {
     char *content_requested;
     char *query_string;
     char *http_version;
+    char *post_content_length;
+    char *post_content_type;
+    char *post_content_data;
 } Request;
 
 Request *parse_client_request(char*);

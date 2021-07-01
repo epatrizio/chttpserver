@@ -11,20 +11,36 @@ Request *parse_client_request(char* client_request)
 {
     Request *request = (Request *) malloc(sizeof(Request));
     unsigned short int i = 0;
+    bool is_first_line = true;
+    char *token, *first_line_token, *rest = client_request;
 
-    char* first_line_request = strtok(client_request, "\n\r");
-    char* token = strtok(first_line_request, " ");
-    while (token != NULL) {
-        if (i == 0)
-            request->method = token;
-        else if (i == 1) {
-            request->content_requested = token;
-            request->query_string = NULL;
+    while ((token = strtok_r(rest, "\n\r", &rest))) {
+        if (is_first_line) {
+            first_line_token = strtok(token, " ");
+            while (first_line_token != NULL) {
+                if (i == 0)
+                    request->method = first_line_token;
+                else if (i == 1) {
+                    request->content_requested = first_line_token;
+                    request->query_string = NULL;
+                }
+                else if (i == 2)
+                    request->http_version = first_line_token;
+                first_line_token = strtok(NULL, " ");
+                i++;
+            }
+            is_first_line = false;
+        } else if (strstr(token, "Content-Length: ") != NULL) {
+            char *w_cl = (char*) malloc(strlen(token)-16+1);
+            strncpy(w_cl, token+16, strlen(token)-16+1);
+            request->post_content_length = w_cl;
+        } else if (strstr(token, "Content-Type: ") != NULL) {
+            char *w_ct = (char*) malloc(strlen(token)-14+1);
+            strncpy(w_ct, token+14, strlen(token)-14+1);
+            request->post_content_type = w_ct;
+        } else if (strstr(token, ": ") == NULL) {
+            request->post_content_data = token;
         }
-        else if (i == 2)
-            request->http_version = token;
-        token = strtok(NULL, " ");
-        i++;
     }
 
     if (strstr(request->content_requested, "?") != NULL) {

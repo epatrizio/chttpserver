@@ -102,4 +102,15 @@ void test_parse_client_request(const void *function_node)
     assert_equals_charp("/action.cgi", client_request->content_requested, function_node);
     assert_equals_charp("HTTP/1.1", client_request->http_version, function_node);
     free(client_request);
+
+    char client_request_buffer_5[] = "POST /action.cgi?par=val HTTP/1.1\n\rContent-Length: 20\n\rContent-Type: my_type\n\rcontent-content---20";
+    client_request = parse_client_request(client_request_buffer_5);
+    assert_equals_charp("POST", client_request->method, function_node);
+    assert_equals_charp("/action.cgi", client_request->content_requested, function_node);
+    assert_equals_charp("HTTP/1.1", client_request->http_version, function_node);
+    assert_equals_charp("par=val", client_request->query_string, function_node);
+    assert_equals_charp("20", client_request->post_content_length, function_node);
+    assert_equals_charp("my_type", client_request->post_content_type, function_node);
+    assert_equals_charp("content-content---20", client_request->post_content_data, function_node);
+    free(client_request);
 }
