@@ -19,6 +19,7 @@
 int socket_init(int);
 void socket_init_trace(struct sockaddr_in*);
 void handle_request(Request*, int);
+void send_trace_response(int, const char*, size_t);
 void send_text_content(int, const char*);
 void send_image_content(int, const char*);
 void send_ping(int);
@@ -45,12 +46,21 @@ void server_start(int port)
         if (client_request < 0) {
             printf("Client request error!\n");
         }
-        printf("%s (%zu)\n\n", client_request_buffer, strlen(client_request_buffer));
 
-        client_request_struct = parse_client_request(client_request_buffer);
-        handle_request(client_request_struct, client_socket);
+        size_t request_length = strlen(client_request_buffer);
+        char *client_request_buffer_tmp = (char*) malloc(request_length+1);
+        strcpy(client_request_buffer_tmp, client_request_buffer);
+        printf("%s (%zu)\n\n", client_request_buffer, request_length);
+
+        client_request_struct = parse_client_request(client_request_buffer_tmp);
+        if (strcmp(client_request_struct->method,"TRACE") == 0)
+            send_trace_response(client_socket, client_request_buffer, request_length);
+        else
+            handle_request(client_request_struct, client_socket);
 
         free(client_request_struct);
+        free(client_request_buffer_tmp);
+
         shutdown(client_socket, SHUT_RDWR); 
         close(client_socket);
     }
@@ -119,9 +129,19 @@ void handle_request(Request* request, int client_socket)
             else
                 send_text_content(client_socket, request->content_requested);
         }
-    } else {
+    } else if (strcmp(request->method,"POST") == 0) {
         execute_php_cgi(client_socket, request);
+    } else {
+        send_not_implemented(client_socket);
     }
+}
+
+void send_trace_response(int client_socket, const char* request, size_t request_length)
+{
+    char header[HEADER_MAX_SIZE];
+    get_trace_http_header(request_length, header);
+    char *trace = str_concat(header, request);
+    write(client_socket, trace, strlen(trace));
 }
 
 void send_text_content(int client_socket, const char *content_local_path)
