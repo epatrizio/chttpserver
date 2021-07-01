@@ -58,7 +58,7 @@ void server_start(int port)
         else
             handle_request(client_request_struct, client_socket);
 
-        free(client_request_struct);
+        free_request(client_request_struct);
         free(client_request_buffer_tmp);
 
         shutdown(client_socket, SHUT_RDWR); 

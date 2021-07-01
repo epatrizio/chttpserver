@@ -52,6 +52,15 @@ Request *parse_client_request(char* client_request)
     return request;
 }
 
+void free_request(Request *request)
+{
+    free(request->query_string);
+    free(request->post_content_length);
+    free(request->post_content_type);
+
+    free(request);
+}
+
 void get_trace_http_header(const size_t request_length, char *header)
 {
     sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: message/http\nContent-Length: %li\n\n", request_length);

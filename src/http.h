@@ -26,6 +26,7 @@ typedef struct {
 } Request;
 
 Request *parse_client_request(char*);
+void free_request(Request*);
 void get_trace_http_header(const size_t, char*);
 void get_text_file_http_header(const char*, const size_t, char*);
 void get_image_file_http_header(const char*, const size_t, char*);
