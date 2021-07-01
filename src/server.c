@@ -22,7 +22,7 @@ void handle_request(Request*, int);
 void send_text_content(int, const char*);
 void send_image_content(int, const char*);
 void send_ping(int);
-void execute_php_cgi(int, const char*, const char*);
+void execute_php_cgi(int, Request*);
 
 void server_start(int port)
 {
@@ -45,7 +45,7 @@ void server_start(int port)
         if (client_request < 0) {
             printf("Client request error!\n");
         }
-        printf("%s", client_request_buffer);
+        printf("%s (%zu)\n\n", client_request_buffer, strlen(client_request_buffer));
 
         client_request_struct = parse_client_request(client_request_buffer);
         handle_request(client_request_struct, client_socket);
@@ -112,7 +112,7 @@ void handle_request(Request* request, int client_socket)
         if (strcmp(request->content_requested,"/ping") == 0) {
             send_ping(client_socket);
         } else if (strstr(request->content_requested, ".php") != NULL) {
-            execute_php_cgi(client_socket, request->content_requested, request->query_string);
+            execute_php_cgi(client_socket, request);
         } else {
             if (is_image_file(request->content_requested))
                 send_image_content(client_socket, request->content_requested);
@@ -120,7 +120,7 @@ void handle_request(Request* request, int client_socket)
                 send_text_content(client_socket, request->content_requested);
         }
     } else {
-        send_not_implemented(client_socket);
+        execute_php_cgi(client_socket, request);
     }
 }
 
@@ -188,16 +188,20 @@ void send_ping(int client_socket)
     write(client_socket, ping, strlen(ping));
 }
 
-void execute_php_cgi(int client_socket, const char *content_local_path, const char *query_string)
+void execute_php_cgi(int client_socket, Request* request)
 {
     FD_pipe cgi_pipes;
     pid_t pid;
 
-    char *path = str_concat(WWWROOT, content_local_path);
+    char *path = str_concat(WWWROOT, request->content_requested);
     char *script_filename = str_concat("SCRIPT_FILENAME=", path);
-    char *script_query_string;
-    if (query_string != NULL)
-        script_query_string = str_concat("QUERY_STRING=", query_string);
+    char *script_query_string, *content_length, *content_type;
+    if (request->query_string != NULL)
+        script_query_string = str_concat("QUERY_STRING=", request->query_string);
+    if (request->post_content_length != NULL)
+        content_length = str_concat("CONTENT_LENGTH=", request->post_content_length);
+    if (request->post_content_type != NULL)
+        content_type = str_concat("CONTENT_TYPE=", request->post_content_type);
 
     if (pipe(cgi_pipes.parent) < 0) {
         send_internal_server_error(client_socket);
@@ -226,9 +230,15 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
 
         putenv("GATEWAY_INTERFACE=CGI/1.1");
         putenv(script_filename);
-        if (query_string != NULL)
+        if (request->query_string != NULL)
             putenv(script_query_string);
-        putenv("REQUEST_METHOD=GET");
+        if (strcmp("GET", request->method) == 0)
+            putenv("REQUEST_METHOD=GET");
+        else {
+            putenv("REQUEST_METHOD=POST");
+            putenv(content_length);
+            putenv(content_type);
+        }
         putenv("REDIRECT_STATUS=CGI");
         putenv("SERVER_PROTOCOL=HTTP/1.1");
         putenv("SERVER_NAME=127.0.0.1");
@@ -242,6 +252,8 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
         free(path);
         free(script_filename);
         free(script_query_string);
+        free(content_length);
+        free(content_type);
 
         exit(EXIT_SUCCESS);
     } else {    // Parent process
@@ -249,6 +261,9 @@ void execute_php_cgi(int client_socket, const char *content_local_path, const ch
 
         close(cgi_pipes.parent[0]);
         close(cgi_pipes.child[1]);
+
+        if (strcmp("POST", request->method) == 0)
+            write(cgi_pipes.parent[1], request->post_content_data, atoi(request->post_content_length));
 
         send_ok_php_cgi(client_socket);
         char content[BUFFER_SIZE];
