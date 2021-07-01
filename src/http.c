@@ -52,6 +52,11 @@ Request *parse_client_request(char* client_request)
     return request;
 }
 
+void get_trace_http_header(const size_t request_length, char *header)
+{
+    sprintf(header, "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: message/http\nContent-Length: %li\n\n", request_length);
+}
+
 void get_text_file_http_header(const char* path_file, const size_t file_size, char *header)
 {
     if (strstr(path_file, ".htm") != NULL)

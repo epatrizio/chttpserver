@@ -114,3 +114,14 @@ void test_parse_client_request(const void *function_node)
     assert_equals_charp("content-content---20", client_request->post_content_data, function_node);
     free(client_request);
 }
+
+void test_get_trace_http_header(const void *function_node)
+{
+    char header[100];
+    get_trace_http_header(20, header);
+
+    assert_equals_charp(
+        "HTTP/1.1 200 OK\n"SERVER_STRING"Content-Type: message/http\nContent-Length: 20\n\n",
+        header, function_node
+    );
+}

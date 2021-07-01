@@ -11,5 +11,6 @@ void test_get_file_size(const void*);
 void test_get_query_string(const void*);
 
 void test_parse_client_request(const void*);
+void test_get_trace_http_header(const void*);
 
 #endif

@@ -17,6 +17,7 @@ int main(int argc, char *argv[])
 
     TestSuite *ts_http = createTestSuite("HTTP");
     addTestFunction(ts_http, "parse_client_request", test_parse_client_request);
+    addTestFunction(ts_http, "get_trace_http_header", test_get_trace_http_header);
     runTestSuite(ts_http, argc, argv);
     displayTestSuite(ts_http);
     deleteTestSuite(ts_http);
